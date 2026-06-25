@@ -538,6 +538,7 @@ static EVERYTHING_PLUGIN_QWORD (EVERYTHING_PLUGIN_API *everything_plugin_os_get_
 static void (EVERYTHING_PLUGIN_API *everything_plugin_version_get_text)(everything_plugin_utf8_buf_t *cbuf);
 static void (EVERYTHING_PLUGIN_API *everything_plugin_utf8_buf_format_filetime)(everything_plugin_utf8_buf_t *cbuf,EVERYTHING_PLUGIN_QWORD ft);
 static void (EVERYTHING_PLUGIN_API *everything_plugin_output_stream_write_printf)(everything_plugin_output_stream_t *output_stream,const everything_plugin_utf8_t *format,...);
+static int (EVERYTHING_PLUGIN_API *everything_plugin_output_stream_flush)(everything_plugin_output_stream_t *output_stream);
 static void (EVERYTHING_PLUGIN_API *everything_plugin_utf8_buf_format_peername)(everything_plugin_utf8_buf_t *cbuf,EVERYTHING_PLUGIN_OS_WINSOCK_SOCKET socket_handle);
 static void (EVERYTHING_PLUGIN_API *everything_plugin_utf8_buf_grow_length)(everything_plugin_utf8_buf_t *cbuf,uintptr_t length_in_bytes);
 static int (EVERYTHING_PLUGIN_API *everything_plugin_os_filetime_to_localtime)(SYSTEMTIME *localst,EVERYTHING_PLUGIN_QWORD ft);
@@ -764,7 +765,10 @@ __declspec( dllexport) void * EVERYTHING_PLUGIN_API everything_plugin_proc(DWORD
 					*etp_server_everything_plugin_proc_array[index].proc_address_ptr = proc;
 				}
 			}
-						
+
+			// optional procs:
+			everything_plugin_output_stream_flush = ((everything_plugin_get_proc_address_t)data)("output_stream_flush");
+
 			etp_server_welcome_message = everything_plugin_utf8_string_alloc_utf8_string((const everything_plugin_utf8_t *)"");
 			etp_server_username = everything_plugin_utf8_string_alloc_utf8_string((const everything_plugin_utf8_t *)"");
 			etp_server_password = everything_plugin_utf8_string_alloc_utf8_string((const everything_plugin_utf8_t *)"");
@@ -2999,6 +3003,11 @@ static void etp_server_log(etp_server_client_t *c,const everything_plugin_utf8_t
 				}
 				
 				everything_plugin_output_stream_write_printf(_etp_server->log_file,(const everything_plugin_utf8_t *)"%s",message_cbuf.buf);
+
+				if (everything_plugin_output_stream_flush)
+				{
+					everything_plugin_output_stream_flush(_etp_server->log_file);
+				}
 
 				everything_plugin_utf8_buf_kill(&date_time_cbuf);
 				everything_plugin_utf8_buf_kill(&version_cbuf);
