@@ -35,6 +35,7 @@ class Watcher:
             raise OSError(ctypes.get_errno(), "inotify_init1 failed")
         self.paths = {}
         self.descriptors = {}
+        self.children = {}
         self.lock = threading.Lock()
 
     def add(self, path):
@@ -50,15 +51,28 @@ class Watcher:
                 raise OSError(error, "Unable to watch " + str(path))
             self.paths[wd] = path
             self.descriptors[path] = wd
+            self.children.setdefault(path.parent, set()).add(path)
+
+    def forget(self, path, wd):
+        self.paths.pop(wd, None)
+        self.descriptors.pop(path, None)
+        siblings = self.children.get(path.parent)
+        if siblings is not None:
+            siblings.discard(path)
+            if not siblings:
+                self.children.pop(path.parent, None)
 
     def remove_tree(self, path):
         path = Path(path)
         with self.lock:
-            for directory, wd in list(self.descriptors.items()):
-                if directory == path or path in directory.parents:
+            pending = [path]
+            while pending:
+                directory = pending.pop()
+                pending.extend(self.children.pop(directory, ()))
+                wd = self.descriptors.get(directory)
+                if wd is not None:
                     self.libc.inotify_rm_watch(self.fd, wd)
-                    self.descriptors.pop(directory, None)
-                    self.paths.pop(wd, None)
+                    self.forget(directory, wd)
 
     def read(self, timeout=0.5):
         if not select.select([self.fd], [], [], timeout)[0]:
@@ -75,8 +89,7 @@ class Watcher:
             with self.lock:
                 path = self.paths.get(wd)
                 if mask & IGNORED and path is not None:
-                    self.paths.pop(wd, None)
-                    self.descriptors.pop(path, None)
+                    self.forget(path, wd)
             if mask & OVERFLOW:
                 events.append((None, mask))
             elif path is not None and not mask & IGNORED:
