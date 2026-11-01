@@ -1,0 +1,39 @@
+[Unit]
+Description=Everything ETP/FTP server for Linux
+After=network.target
+RequiresMountsFor=/PVE/NAS
+ConditionPathIsDirectory=/PVE/NAS
+
+[Service]
+Type=simple
+User=steven
+Group=steven
+ExecStart=/usr/bin/python3 -m etp.server --config /etc/etp-server/config.toml
+Environment=PYTHONPATH=/opt/etp-server
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+WorkingDirectory=/opt/etp-server
+BindReadOnlyPaths=/PVE/NAS:/srv/etp/NAS
+StateDirectory=etp-server
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

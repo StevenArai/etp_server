@@ -1,0 +1,12 @@
+[server]
+host = "127.0.0.1"
+port = 2121
+username = "steven"
+password = "CHANGE-ME"
+passive_port_min = 50000
+passive_port_max = 50100
+
+[index]
+root = "/srv/etp/NAS"
+database = "/var/lib/etp-server/index.sqlite3"
+drive = "N:"

@@ -1,3 +1,6 @@
+Linux standalone ETP/FTP server: **[installation and Everything connection guide](linux/README.md)**.
+Search Linux NAS files from Everything using the upstream ETP protocol. The Windows plugin documentation follows below.
+
 ETP/FTP Server Plugin for [Everything 1.5](https://www.voidtools.com/forum/viewtopic.php?f=12&t=9787)
 
 Allow users to search and access your files from Everything or an FTP client.
