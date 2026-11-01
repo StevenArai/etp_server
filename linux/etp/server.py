@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import signal
+import socket
 import tempfile
 import tomllib
 
@@ -200,8 +201,18 @@ def make_server(config, index):
         "passive_ports": range(server_config.get("passive_port_min", 50000),
                                server_config.get("passive_port_max", 50100) + 1),
     })
-    server = ThreadedFTPServer((server_config.get("host", "127.0.0.1"),
-                                server_config.get("port", 2121)), handler)
+    address = (server_config.get("host", "127.0.0.1"), server_config.get("port", 2121))
+    if address[0] == "::":
+        # One IPv6 listener also accepts IPv4, including LAN and Tailscale addresses.
+        listener = socket.create_server(address, family=socket.AF_INET6,
+                                        dualstack_ipv6=socket.has_dualstack_ipv6())
+        try:
+            server = ThreadedFTPServer(listener, handler)
+        except BaseException:
+            listener.close()
+            raise
+    else:
+        server = ThreadedFTPServer(address, handler)
     server.max_cons = 32
     server.max_cons_per_ip = 8
     return server

@@ -3,6 +3,7 @@ import io
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -143,13 +144,12 @@ class ProtocolTests(unittest.TestCase):
         (cls.root / "电影" / "电影 sample.txt").write_bytes("中文内容".encode())
         (cls.root / "escape").symlink_to("/etc/passwd")
         (cls.root / "escape-dir").symlink_to("/etc")
-        import socket
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             cls.port = sock.getsockname()[1]
         config = Path(cls.temp.name) / "config.toml"
         config.write_text(f'''[server]
-host="127.0.0.1"
+host="{'::' if socket.has_dualstack_ipv6() else '127.0.0.1'}"
 port={cls.port}
 username="test"
 password="test-password"
@@ -184,9 +184,9 @@ database="{cls.temp.name}/index.sqlite3"
         cls.temp.cleanup()
 
     @classmethod
-    def connect(cls, login=True):
+    def connect(cls, login=True, host="127.0.0.1"):
         ftp = ftplib.FTP()
-        ftp.connect("127.0.0.1", cls.port, timeout=15)
+        ftp.connect(host, cls.port, timeout=15)
         if login:
             ftp.login("test", "test-password")
         return ftp
@@ -217,6 +217,15 @@ database="{cls.temp.name}/index.sqlite3"
                 with self.assertRaises(ftplib.error_perm):
                     ftp.sendcmd("EVERYTHING " + command)
             self.assertTrue(ftp.voidcmd("NOOP").startswith("200 "))
+
+    @unittest.skipUnless(socket.has_dualstack_ipv6(), "IPv6 dual stack unavailable")
+    def test_ipv6_query_and_download(self):
+        with self.connect(host="::1") as ftp:
+            ftp.sendcmd("SITE EVERYTHING SEARCH sample")
+            self.assertIn("RESULT_COUNT 1", ftp.sendcmd("SITE EVERYTHING QUERY"))
+            data = bytearray()
+            ftp.retrbinary("RETR /N:/电影/电影 sample.txt", data.extend)
+            self.assertEqual(bytes(data), "中文内容".encode())
 
     def test_download_permissions_and_sessions(self):
         with self.connect() as ftp, self.connect() as second:

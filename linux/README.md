@@ -16,6 +16,11 @@ sudo sh linux/install.sh steven /PVE/NAS 192.168.1.28
 
 Replace the username, NAS directory, and listening address as appropriate.
 With no address argument the installer listens on `127.0.0.1`.
+Use `::` as the listening address to accept both IPv4 and IPv6 connections on all
+interfaces, including LAN and Tailscale. A single LAN address only accepts connections
+sent to that address; a hostname such as `pve` may resolve to a Tailscale address on
+Windows. Existing installations retain their configured address: change `server.host`
+in `/etc/etp-server/config.toml` and restart `etp-server.service` to update it.
 The installer creates a random password in `/etc/etp-server/config.toml`, installs
 the application in `/opt/etp-server`, and enables `etp-server.service` at boot.
 Repeat the same command to update an installation; existing credentials are retained.
@@ -53,6 +58,11 @@ Remote NFS/SMB changes made by another host may not generate local inotify event
 2. Set host `192.168.1.28`, port `2121`, and the username/password in the config.
 3. Choose FTP links, or configure the following SMB path rewrite for the existing
    `\\192.168.1.28\NAS` share.
+
+With `server.host = "::"`, you may also connect using the server's Tailscale IP or
+MagicDNS hostname such as `pve`. If Everything reports that it cannot create the
+connection, check Windows PowerShell with `Test-NetConnection pve -Port 2121`.
+For Tailscale access, SMB path rewriting should use `\\pve\NAS\` as well.
 
 The server reports paths beneath the virtual drive `N:\`. To open them through SMB,
 exit Everything completely and add these settings to its `Everything.ini`:
